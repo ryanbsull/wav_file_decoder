@@ -1,5 +1,7 @@
 use std::process::exit;
 
+use decode::display_wave_data;
+
 mod cli;
 mod decode;
 
@@ -15,7 +17,8 @@ fn main() {
     }
 
     if let Ok(file_contents) = decode::decode_wav_file(&wav_file) {
-        println!("{:?}", file_contents);
+        println!("{file_contents}");
+        display_wave_data(&file_contents);
     } else {
         println!("Could not read file");
         exit(1);
