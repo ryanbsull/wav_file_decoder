@@ -156,11 +156,3 @@ pub fn decode_wav_file(path: &str) -> Result<WaveForm, std::io::Error> {
     check_wav_file_format(&file_contents)?;
     Ok(WaveForm::new(&file_contents))
 }
-
-pub fn display_wave_data(wav_file: &WaveForm) {
-    for sample in
-        (0..wav_file.wave_data.size).step_by((&wav_file.fmt_ck.sample_rate / 100) as usize)
-    {
-        println!("{:#x}", wav_file.wave_data.data[sample as usize]);
-    }
-}
