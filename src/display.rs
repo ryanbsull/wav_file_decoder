@@ -107,7 +107,6 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
         if i % window_config.sample_config.rate < 100 && i > window_config.sample_config.rate - 100
         {
             // if around the second draw a red line to denote the second boundary
-            println!("SETTING SECOND MARKER");
             canvas.set_draw_color(window_config.per_sec_color);
             draw_wav_line(
                 i / window_config.step_size,

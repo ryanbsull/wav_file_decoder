@@ -1,7 +1,8 @@
-// used for now since this is in development
-#[allow(dead_code)]
-pub fn dct(_waveform: &Vec<u8>) -> Vec<f64> {
-    let amp = vec![0.0];
+use std::f32::consts::PI;
+
+pub fn dct(waveform: &Vec<u8>) -> Vec<f64> {
+    let arr_len = waveform.len();
+    let mut amp = vec![0.0; arr_len];
     /*
         Discrete cosine transform:
 
@@ -28,5 +29,15 @@ pub fn dct(_waveform: &Vec<u8>) -> Vec<f64> {
             - DFT is more often used for general spectral analysis tools
 
     */
+    let factor: f64 = (PI / (arr_len as f32)) as f64;
+    println!("Discrete Cosine Transform Factor: {factor}");
+
+    for i in 0..arr_len {
+        let mut sum = 0.0;
+        for j in 0..arr_len {
+            sum += (waveform[i] as f64) * f64::cos(((j as f64) + 0.5) * (i as f64) * factor);
+        }
+        amp[i] = sum;
+    }
     amp
 }
