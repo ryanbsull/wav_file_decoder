@@ -1,6 +1,6 @@
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels;
+use sdl2::pixels::Color;
 use sdl2::rect::Point;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
@@ -10,7 +10,62 @@ use crate::decode;
 const SCREEN_WIDTH: u32 = 2500;
 const SCREEN_HEIGHT: u32 = 600;
 
+#[allow(dead_code)]
+struct ScreenSize {
+    height: usize,
+    width: usize,
+}
+
+struct SampleConfig {
+    max: usize,
+    min: usize,
+    rate: usize,
+}
+
+#[allow(dead_code)]
+struct WavWindowConfig {
+    wave_color: Color,
+    per_sec_color: Color,
+    sample_config: SampleConfig,
+    step_size: usize,
+    size: ScreenSize,
+}
+
+impl WavWindowConfig {
+    fn new(
+        screen_height: usize,
+        screen_width: usize,
+        sample_max: usize,
+        sample_min: usize,
+        sample_rate: usize,
+        sample_size: usize,
+    ) -> Self {
+        WavWindowConfig {
+            wave_color: Color::RGB(0xCF, 0xCF, 0xCF),
+            per_sec_color: Color::RGB(0xF0, 0x20, 0x20),
+            sample_config: SampleConfig {
+                max: sample_max,
+                min: sample_min,
+                rate: sample_rate,
+            },
+            step_size: sample_size / screen_width,
+            size: ScreenSize {
+                height: screen_height,
+                width: screen_width,
+            },
+        }
+    }
+}
+
 pub fn show_wav(wave_form: &decode::WaveForm) {
+    let window_config: WavWindowConfig = WavWindowConfig::new(
+        SCREEN_HEIGHT as usize,
+        SCREEN_WIDTH as usize,
+        *wave_form.wave_data.data.iter().max().unwrap() as usize,
+        *wave_form.wave_data.data.iter().min().unwrap() as usize,
+        wave_form.fmt_ck.sample_rate as usize,
+        wave_form.wave_data.size as usize,
+    );
     let sdl_context = sdl2::init().unwrap();
     let video_subsys = sdl_context.video().unwrap();
 
@@ -27,45 +82,66 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
         .map_err(|e| e.to_string())
         .unwrap();
 
-    canvas.set_draw_color(pixels::Color::RGB(30, 30, 30));
+    canvas.set_draw_color(Color::RGB(30, 30, 30));
     canvas.clear();
-    let default_color = pixels::Color::RGB(0xCF, 0xCF, 0xCF);
-    let second_color = pixels::Color::RGB(0xF0, 0x10, 0x10);
-    canvas.set_draw_color(default_color);
-    let max_sample = wave_form.wave_data.data.iter().max().unwrap();
-    let min_sample = wave_form.wave_data.data.iter().min().unwrap();
-    let sample_per_second: usize = wave_form.fmt_ck.sample_rate as usize;
-    let step_size: usize = (wave_form.wave_data.size / SCREEN_WIDTH) as usize;
+    canvas.set_draw_color(window_config.wave_color);
 
-    println!("Data Value Range: {} - {}", max_sample, min_sample);
+    /*
+        Go through the waveform data, incrementing by step_size and display
+        to screen as a line extending up and down from the center of the
+        screen
+    */
     for (i, sample) in wave_form
         .wave_data
         .data
         .iter()
         .enumerate()
-        .step_by(step_size)
+        .step_by(window_config.step_size)
     {
-        let norm_height =
-            ((*sample as f64) / ((*max_sample - *min_sample) as f64)) * SCREEN_HEIGHT as f64 / 2.0;
-        if i % sample_per_second < 100 && i > sample_per_second - 100 {
+        // calculate the normalized height of the line
+        let norm_height = ((*sample as f64)
+            / ((window_config.sample_config.max - window_config.sample_config.min) as f64))
+            * SCREEN_HEIGHT as f64
+            / 2.0;
+        // check if the samples are around the second mark
+        if i % window_config.sample_config.rate < 100 && i > window_config.sample_config.rate - 100
+        {
+            // if around the second draw a red line to denote the second boundary
             println!("SETTING SECOND MARKER");
-            canvas.set_draw_color(second_color);
-            draw_line(i / step_size, SCREEN_HEIGHT as f64, &mut canvas);
+            canvas.set_draw_color(window_config.per_sec_color);
+            draw_wav_line(
+                i / window_config.step_size,
+                SCREEN_HEIGHT as f64,
+                &mut canvas,
+            );
         } else {
-            canvas.set_draw_color(default_color);
-            draw_line(i / step_size, norm_height, &mut canvas);
+            // otherwise just draw the waveform data as is
+            canvas.set_draw_color(window_config.wave_color);
+            draw_wav_line(i / window_config.step_size, norm_height, &mut canvas);
         }
     }
+    canvas.set_draw_color(Color::RGB(0x00, 0x00, 0x00));
+    canvas
+        .draw_line(
+            Point::new(0, (SCREEN_HEIGHT as i32) / 2),
+            Point::new(SCREEN_WIDTH as i32, (SCREEN_HEIGHT as i32) / 2),
+        )
+        .unwrap();
     canvas.present();
+
+    // Init event loop to track key presses //
     let mut events = sdl_context.event_pump().unwrap();
     'main: loop {
         for event in events.poll_iter() {
             match event {
+                // allow the user to Ctrl-C out of the program
                 Event::Quit { .. } => break 'main,
+                // check if a key was pressed
                 Event::KeyDown {
                     keycode: Some(keycode),
                     ..
                 } => {
+                    // if the key is escape then exit
                     if keycode == Keycode::Escape {
                         break 'main;
                     }
@@ -76,7 +152,8 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
     }
 }
 
-fn draw_line(x: usize, y: f64, canvas: &mut Canvas<Window>) {
+fn draw_wav_line(x: usize, y: f64, canvas: &mut Canvas<Window>) {
+    // calculate the lower and upper y values of the line since it extends both up and down from the center line
     let upper: i32 = (y as i32) + ((SCREEN_HEIGHT as i32) / 2);
     let lower: i32 = ((SCREEN_HEIGHT as i32) / 2) - (y as i32);
     canvas
