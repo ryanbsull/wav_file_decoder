@@ -24,20 +24,20 @@ pub struct WaveForm {
     */
     chunk_size: u32,
     fmt: [u8; 4], // == 0x57415645 big-endian form 'WAVE'
-    fmt_ck: WaveFmtChunk,
+    pub fmt_ck: WaveFmtChunk,
     pub wave_data: WaveData,
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
-struct WaveFmtChunk {
-    id: [u8; 4],       // Contains the letters "fmt " == 0x666d7420 big-endian form
-    size: u32,         // 16 for PCM
-    audio_fmt: u16,    // PCM = 1 (if != 1 then indicates compression)
-    num_channels: u16, // Mono = 1, Stereo = 2
-    sample_rate: u32,  // number of samples per second
-    byte_rate: u32,    // == sample_rate * num_channels * bits_per_sample / 8
-    blk_align: u16,    // == num_channels * bits_per_sample / 8
+pub struct WaveFmtChunk {
+    id: [u8; 4],          // Contains the letters "fmt " == 0x666d7420 big-endian form
+    size: u32,            // 16 for PCM
+    audio_fmt: u16,       // PCM = 1 (if != 1 then indicates compression)
+    num_channels: u16,    // Mono = 1, Stereo = 2
+    pub sample_rate: u32, // number of samples per second
+    byte_rate: u32,       // == sample_rate * num_channels * bits_per_sample / 8
+    blk_align: u16,       // == num_channels * bits_per_sample / 8
     bits_per_sample: u16,
 }
 
