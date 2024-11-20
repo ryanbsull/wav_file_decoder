@@ -3,6 +3,7 @@ use std::process::exit;
 mod cli;
 mod decode;
 mod display;
+mod encode;
 
 fn main() {
     let cli = cli::parse_args();
