@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-pub fn dct(waveform: &Vec<u8>) -> Vec<f64> {
+pub fn dct(waveform: &Vec<f64>) -> Vec<f64> {
     let arr_len = waveform.len();
     let mut amp = vec![0.0; arr_len];
     /*
@@ -35,7 +35,7 @@ pub fn dct(waveform: &Vec<u8>) -> Vec<f64> {
     for i in 0..arr_len {
         let mut sum = 0.0;
         for j in 0..arr_len {
-            sum += (waveform[i] as f64) * f64::cos(((j as f64) + 0.5) * (i as f64) * factor);
+            sum += waveform[i] * (((j as f64) + 0.5) * (i as f64) * factor).cos();
         }
         amp[i] = sum;
     }
