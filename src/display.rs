@@ -16,9 +16,8 @@ struct ScreenSize {
     width: usize,
 }
 
+#[allow(dead_code)]
 struct SampleConfig {
-    max: usize,
-    min: usize,
     rate: usize,
 }
 
@@ -35,19 +34,13 @@ impl WavWindowConfig {
     fn new(
         screen_height: usize,
         screen_width: usize,
-        sample_max: usize,
-        sample_min: usize,
         sample_rate: usize,
         sample_size: usize,
     ) -> Self {
         WavWindowConfig {
             wave_color: Color::RGB(0xCF, 0xCF, 0xCF),
             per_sec_color: Color::RGB(0xF0, 0x20, 0x20),
-            sample_config: SampleConfig {
-                max: sample_max,
-                min: sample_min,
-                rate: sample_rate,
-            },
+            sample_config: SampleConfig { rate: sample_rate },
             step_size: sample_size / screen_width,
             size: ScreenSize {
                 height: screen_height,
@@ -58,11 +51,10 @@ impl WavWindowConfig {
 }
 
 pub fn show_wav(wave_form: &decode::WaveForm) {
+    let mut drawn_lines: Vec<f64> = vec![];
     let window_config: WavWindowConfig = WavWindowConfig::new(
         SCREEN_HEIGHT as usize,
         SCREEN_WIDTH as usize,
-        *wave_form.wave_data.data.iter().max().unwrap() as usize,
-        *wave_form.wave_data.data.iter().min().unwrap() as usize,
         wave_form.fmt_ck.sample_rate as usize,
         wave_form.wave_data.size as usize,
     );
@@ -99,25 +91,31 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
         .step_by(window_config.step_size)
     {
         // calculate the normalized height of the line
-        let norm_height = ((*sample as f64)
-            / ((window_config.sample_config.max - window_config.sample_config.min) as f64))
-            * SCREEN_HEIGHT as f64
-            / 2.0;
-        // check if the samples are around the second mark
-        if i % window_config.sample_config.rate < 100 && i > window_config.sample_config.rate - 100
-        {
-            // if around the second draw a red line to denote the second boundary
-            canvas.set_draw_color(window_config.per_sec_color);
-            draw_wav_line(
-                i / window_config.step_size,
-                SCREEN_HEIGHT as f64,
-                &mut canvas,
-            );
+        let line_height;
+        if i == 0 {
+            line_height = *sample as f64
         } else {
-            // otherwise just draw the waveform data as is
-            canvas.set_draw_color(window_config.wave_color);
-            draw_wav_line(i / window_config.step_size, norm_height, &mut canvas);
+            let mut avg_height: f64 = 0.0;
+            for s in wave_form.wave_data.data[(i - window_config.step_size + 1)..=i].iter() {
+                avg_height += *s as f64;
+            }
+            avg_height = avg_height / (window_config.step_size as f64);
+            line_height = avg_height
         }
+        if line_height == 0.0 {
+            continue;
+        }
+        drawn_lines.push(line_height);
+    }
+    let line_max = drawn_lines
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    let line_min = drawn_lines.iter().copied().fold(f64::INFINITY, f64::min);
+    for (i, line) in drawn_lines.iter().enumerate() {
+        let norm_height: f64 =
+            ((*line - line_min) / (line_max - line_min)) * (SCREEN_HEIGHT as f64 / 4.0);
+        draw_wav_line(i, norm_height, &mut canvas);
     }
     canvas.set_draw_color(Color::RGB(0x00, 0x00, 0x00));
     canvas

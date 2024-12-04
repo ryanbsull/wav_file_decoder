@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 
+#[allow(dead_code)]
 pub fn dct(waveform: &Vec<f64>) -> Vec<f64> {
     let arr_len = waveform.len();
     let mut amp = vec![0.0; arr_len];
