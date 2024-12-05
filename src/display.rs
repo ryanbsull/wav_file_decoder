@@ -50,6 +50,43 @@ impl WavWindowConfig {
     }
 }
 
+fn scale_data(
+    wave_form: &decode::WaveForm,
+    drawn_lines: &mut Vec<f64>,
+    window_config: &WavWindowConfig,
+) -> (f64, f64) {
+    for (i, sample) in wave_form
+        .wave_data
+        .data
+        .iter()
+        .enumerate()
+        .step_by(window_config.step_size)
+    {
+        // calculate the normalized height of the line
+        let line_height;
+        if i == 0 {
+            line_height = *sample as f64
+        } else {
+            let mut avg_height: f64 = 0.0;
+            for s in wave_form.wave_data.data[(i - window_config.step_size + 1)..=i].iter() {
+                avg_height += *s as f64;
+            }
+            avg_height = avg_height / (window_config.step_size as f64);
+            line_height = avg_height
+        }
+        if line_height == 0.0 {
+            continue;
+        }
+        drawn_lines.push(line_height);
+    }
+
+    let max = drawn_lines
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    let min = drawn_lines.iter().copied().fold(f64::INFINITY, f64::min);
+    (max, min)
+}
 pub fn show_wav(wave_form: &decode::WaveForm) {
     let mut drawn_lines: Vec<f64> = vec![];
     let window_config: WavWindowConfig = WavWindowConfig::new(
@@ -83,35 +120,9 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
         to screen as a line extending up and down from the center of the
         screen
     */
-    for (i, sample) in wave_form
-        .wave_data
-        .data
-        .iter()
-        .enumerate()
-        .step_by(window_config.step_size)
-    {
-        // calculate the normalized height of the line
-        let line_height;
-        if i == 0 {
-            line_height = *sample as f64
-        } else {
-            let mut avg_height: f64 = 0.0;
-            for s in wave_form.wave_data.data[(i - window_config.step_size + 1)..=i].iter() {
-                avg_height += *s as f64;
-            }
-            avg_height = avg_height / (window_config.step_size as f64);
-            line_height = avg_height
-        }
-        if line_height == 0.0 {
-            continue;
-        }
-        drawn_lines.push(line_height);
-    }
-    let line_max = drawn_lines
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
-    let line_min = drawn_lines.iter().copied().fold(f64::INFINITY, f64::min);
+    let line_max: f64;
+    let line_min: f64;
+    (line_max, line_min) = scale_data(&wave_form, &mut drawn_lines, &window_config);
     for (i, line) in drawn_lines.iter().enumerate() {
         let norm_height: f64 =
             ((*line - line_min) / (line_max - line_min)) * (SCREEN_HEIGHT as f64 / 4.0);
@@ -156,4 +167,26 @@ fn draw_wav_line(x: usize, y: f64, canvas: &mut Canvas<Window>) {
     canvas
         .draw_line(Point::new(x as i32, lower), Point::new(x as i32, upper))
         .unwrap();
+}
+
+#[allow(dead_code)]
+fn open_application(_wave_form: &decode::WaveForm) {
+    let sdl_context = sdl2::init().unwrap();
+    let video_subsys = sdl_context.video().unwrap();
+
+    let window = video_subsys
+        .window("waveform", SCREEN_WIDTH, SCREEN_HEIGHT)
+        .position_centered()
+        .opengl()
+        .build()
+        .map_err(|e| e.to_string())
+        .unwrap();
+    let mut canvas = window
+        .into_canvas()
+        .build()
+        .map_err(|e| e.to_string())
+        .unwrap();
+
+    canvas.set_draw_color(Color::RGB(30, 30, 30));
+    canvas.clear();
 }
