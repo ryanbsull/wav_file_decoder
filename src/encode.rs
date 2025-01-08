@@ -1,3 +1,4 @@
+use num::complex::Complex;
 use std::f32::consts::PI;
 
 #[allow(dead_code)]
@@ -41,4 +42,28 @@ pub fn dct(waveform: &Vec<f64>) -> Vec<f64> {
         amp[i] = sum;
     }
     amp
+}
+
+pub fn fft(wv: &mut Vec<Complex<f64>>) {
+    let n = wv.len();
+    if n == 1 || n == 0 {
+        return;
+    }
+    let mut a0: Vec<Complex<f64>> = Vec::new();
+    let mut a1: Vec<Complex<f64>> = Vec::new();
+
+    for i in 0..n / 2 {
+        a0.push(wv[2 * i]);
+        a1.push(wv[2 * i + 1]);
+    }
+
+    let angle: f64 = (2.0 * PI / n as f32) as f64;
+    let mut w = Complex::new(1.0, 0.0);
+    let wn = Complex::new(angle.cos(), angle.sin());
+
+    for i in 0..n / 2 {
+        wv[i] = a0[i] + w * a1[i];
+        wv[i + n / 2] = a0[i] - w * a1[i];
+        w = w * wn;
+    }
 }

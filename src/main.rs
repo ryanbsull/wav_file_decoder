@@ -1,3 +1,4 @@
+use num::complex::Complex;
 use std::process::exit;
 
 mod cli;
@@ -17,6 +18,12 @@ fn main() {
     }
 
     if let Ok(file_contents) = decode::decode_wav_file(&wav_file) {
+        let mut complex_vec: Vec<Complex<f64>> = vec![];
+        for sample in &file_contents.wave_data.data {
+            complex_vec.push(Complex::new((*sample).into(), 0.0));
+        }
+        encode::fft(&mut complex_vec);
+        println!("{:?}", &complex_vec);
         display::show_wav(&file_contents);
     } else {
         println!("Could not read file");

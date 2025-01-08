@@ -38,7 +38,7 @@ pub struct WaveFmtChunk {
     pub sample_rate: u32, // number of samples per second
     byte_rate: u32,       // == sample_rate * num_channels * bits_per_sample / 8
     blk_align: u16,       // == num_channels * bits_per_sample / 8
-    bits_per_sample: u16,
+    pub bits_per_sample: u16,
 }
 
 #[allow(dead_code)]
