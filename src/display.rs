@@ -7,7 +7,7 @@ use sdl2::video::Window;
 
 use crate::decode;
 
-const SCREEN_WIDTH: u32 = 2500;
+const SCREEN_WIDTH: u32 = 1500;
 const SCREEN_HEIGHT: u32 = 600;
 
 #[allow(dead_code)]
