@@ -1,3 +1,4 @@
+use byteorder::{ByteOrder, LittleEndian};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -55,23 +56,34 @@ fn scale_data(
     drawn_lines: &mut Vec<f64>,
     window_config: &WavWindowConfig,
 ) -> (f64, f64) {
-    for (i, sample) in wave_form
-        .wave_data
-        .data
-        .iter()
-        .enumerate()
-        .step_by(window_config.step_size)
-    {
+    let step = wave_form.fmt_ck.bits_per_sample / 8;
+    for i in (0..(wave_form.wave_data.data.len() - 1)).step_by(window_config.step_size) {
         // calculate the normalized height of the line
+        let mut sample_8 = 0;
+        let mut sample_16 = 0;
+        if step == 1 {
+            sample_8 = wave_form.wave_data.data[i];
+        } else if step == 2 {
+            sample_16 = LittleEndian::read_u16(&wave_form.wave_data.data[i..=(i + 1)]);
+        }
         let line_height;
         if i == 0 {
-            line_height = *sample as f64
+            if step == 1 {
+                line_height = sample_8 as f64
+            } else {
+                line_height = sample_16 as f64
+            }
         } else {
             let mut avg_height: f64 = 0.0;
-            for s in wave_form.wave_data.data[(i - window_config.step_size + 1)..=i].iter() {
-                avg_height += *s as f64;
+            for s in ((i - window_config.step_size + 1)..=i).step_by(step as usize) {
+                if step == 1 {
+                    avg_height += wave_form.wave_data.data[s] as f64;
+                } else {
+                    avg_height +=
+                        LittleEndian::read_u16(&wave_form.wave_data.data[s..=(s + 1)]) as f64;
+                }
             }
-            avg_height = avg_height / (window_config.step_size as f64);
+            avg_height = (step as f64) * avg_height / (window_config.step_size as f64);
             line_height = avg_height
         }
         if line_height == 0.0 {
