@@ -8,9 +8,6 @@ use sdl2::video::Window;
 
 use crate::decode;
 
-const SCREEN_WIDTH: u32 = 1500;
-const SCREEN_HEIGHT: u32 = 600;
-
 #[allow(dead_code)]
 struct ScreenSize {
     height: usize,
@@ -99,11 +96,17 @@ fn scale_data(
     let min = drawn_lines.iter().copied().fold(f64::INFINITY, f64::min);
     (max, min)
 }
+
 pub fn show_wav(wave_form: &decode::WaveForm) {
+    let mode = core_graphics::display::CGDisplay::main()
+        .display_mode()
+        .unwrap();
     let mut drawn_lines: Vec<f64> = vec![];
+    let height = mode.height() * 3 / 4; // scale screen to 3/4 of full screen height
+    let width = mode.width();
     let window_config: WavWindowConfig = WavWindowConfig::new(
-        SCREEN_HEIGHT as usize,
-        SCREEN_WIDTH as usize,
+        height as usize,
+        width as usize,
         wave_form.fmt_ck.sample_rate as usize,
         wave_form.wave_data.size as usize,
     );
@@ -111,7 +114,7 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
     let video_subsys = sdl_context.video().unwrap();
 
     let window = video_subsys
-        .window("waveform", SCREEN_WIDTH, SCREEN_HEIGHT)
+        .window("waveform", width as u32, height as u32)
         .position_centered()
         .opengl()
         .build()
@@ -136,15 +139,14 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
     let line_min: f64;
     (line_max, line_min) = scale_data(&wave_form, &mut drawn_lines, &window_config);
     for (i, line) in drawn_lines.iter().enumerate() {
-        let norm_height: f64 =
-            ((*line - line_min) / (line_max - line_min)) * (SCREEN_HEIGHT as f64 / 4.0);
-        draw_wav_line(i, norm_height, &mut canvas);
+        let norm_height: f64 = ((*line - line_min) / (line_max - line_min)) * (height as f64 / 4.0);
+        draw_wav_line(i, norm_height, height, &mut canvas);
     }
     canvas.set_draw_color(Color::RGB(0x00, 0x00, 0x00));
     canvas
         .draw_line(
-            Point::new(0, (SCREEN_HEIGHT as i32) / 2),
-            Point::new(SCREEN_WIDTH as i32, (SCREEN_HEIGHT as i32) / 2),
+            Point::new(0, (height as i32) / 2),
+            Point::new(width as i32, (height as i32) / 2),
         )
         .unwrap();
     canvas.present();
@@ -172,22 +174,22 @@ pub fn show_wav(wave_form: &decode::WaveForm) {
     }
 }
 
-fn draw_wav_line(x: usize, y: f64, canvas: &mut Canvas<Window>) {
+fn draw_wav_line(x: usize, y: f64, height: u64, canvas: &mut Canvas<Window>) {
     // calculate the lower and upper y values of the line since it extends both up and down from the center line
-    let upper: i32 = (y as i32) + ((SCREEN_HEIGHT as i32) / 2);
-    let lower: i32 = ((SCREEN_HEIGHT as i32) / 2) - (y as i32);
+    let upper: i32 = (y as i32) + ((height as i32) / 2);
+    let lower: i32 = ((height as i32) / 2) - (y as i32);
     canvas
         .draw_line(Point::new(x as i32, lower), Point::new(x as i32, upper))
         .unwrap();
 }
 
 #[allow(dead_code)]
-fn open_application(_wave_form: &decode::WaveForm) {
+fn open_application(_wave_form: &decode::WaveForm, height: u64, width: u64) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsys = sdl_context.video().unwrap();
 
     let window = video_subsys
-        .window("waveform", SCREEN_WIDTH, SCREEN_HEIGHT)
+        .window("waveform", width as u32, height as u32)
         .position_centered()
         .opengl()
         .build()
